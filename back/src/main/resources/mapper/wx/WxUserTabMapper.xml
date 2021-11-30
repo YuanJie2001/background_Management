@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vector.manager.wx.dao.GzhUserDao">
+
+    <resultMap id="UserAndTagsResultMap" type="com.vector.manager.wx.entity.export.UserExportV2">
+        <result property="openId" column="open_id" />
+        <result property="nickname" column="nickname" />
+        <result property="headImgUrl" column="head_img_url" />
+        <result property="sexDesc" column="sex_desc" />
+        <result property="country" column="country" />
+        <result property="province" column="province" />
+        <result property="city" column="city" />
+
+        <collection property="tags" ofType="com.vector.manager.wx.entity.export.TagExportV2">
+            <result property="name" column="name" />
+            <result property="content" column="content" />
+            <result property="rank" column="rank" />
+            <result property="score" column="score" />
+        </collection>
+    </resultMap>
+
+    <select id="selectUserAndTags" parameterType="com.vector.manager.wx.entity.export.SearchDTO" resultMap="UserAndTagsResultMap">
+        SELECT
+            t1.open_id, t1.nickname, t1.head_img_url, t1.sex_desc, t1.country, t1.province, t1.city,
+            t2.name, t2.content, t2.rank, t2.score
+        FROM wx_gzh_user t1
+        LEFT JOIN wx_gzh_fenwei_tag t2
+        ON t1.gzh_id = t2.gzh_id AND t1.open_id = t2.open_id
+        WHERE t1.create_by = t2.create_by AND t1.create_by = #{createBy} AND t1.gzh_id = #{gzhId}
+        AND t2.field_id = #{fieldId}
+    </select>
+
+    <select id="getUserNewTags" resultType="com.vector.manager.wx.entity.GzhUser" parameterType="com.vector.manager.wx.entity.WxParams">
+        SELECT
+        t1.id,
+        t1.gzh_id AS gzhId,
+        t1.open_id AS openId,
+        t1.nickname,
+        t3.`name` AS fenWeiTags,
+        t3.wx_tag_id AS tagIds
+        FROM
+        wx_gzh_user t1
+        LEFT JOIN (
+        SELECT
+        t.open_id,
+        count( t.open_id ) AS openid_count,
+        t.tag_id,
+        t.compute,
+        t.flag,
+        SUM( t.flag ) AS flag_sum
+        FROM
+        (
+        SELECT
+        t1.open_id,
+        t2.tag_id,
+        t2.rid,
+        t1.content,
+        t2.compute,
+        t1.score AS score1,
+        t2.score AS score2,
+        CASE
+        t2.compute
+        WHEN 'gt' THEN
+        t1.score <![CDATA[ >= ]]> t2.score ELSE t1.score <![CDATA[ <= ]]> t2.score
+        END flag
+        FROM
+        (
+        SELECT
+        t1.open_id,
+        t1.`name` AS rid,
+        t1.content,
+        t1.score
+        FROM
+        wx_gzh_fenwei_tag t1
+        LEFT JOIN (
+        SELECT
+        t1.open_id,
+        count( t1.open_id )
+        FROM
+        wx_gzh_fenwei_tag t1
+        LEFT JOIN wx_gzh_tag_rule t2 ON t1.`name` = t2.rid
+        WHERE
+        t1.create_by = #{userId}
+        AND t1.gzh_id = #{gzhId}
+        AND t2.tag_id = #{tagId}
+        GROUP BY
+        t1.open_id
+        HAVING
+        count( t1.open_id ) = #{size}
+        ) t2 ON t1.open_id = t2.open_id
+        WHERE
+        t1.create_by = #{userId}
+        AND t1.gzh_id = #{gzhId}
+        ) t1
+        LEFT JOIN wx_gzh_tag_rule t2 ON t1.rid = t2.rid
+        WHERE
+        t2.tag_id = #{tagId}
+        ORDER BY
+        t1.open_id
+        ) t
+        GROUP BY
+        t.open_id
+        HAVING
+        count( t.open_id ) = SUM( t.flag )
+        ) t2 ON t1.open_id = t2.open_id
+        LEFT JOIN wx_gzh_tag t3 ON t2.tag_id = t3.id
+        WHERE
+        t1.create_by = #{userId}
+        AND t1.gzh_id = #{gzhId}
+        AND t2.tag_id = #{tagId}
+    </select>
+
+    <select id="getFenweiTagList" resultType="Map">
+        SELECT `name` as value, field_id as fieldId, content as label FROM wx_gzh_fenwei_tag GROUP BY `name`,field_id,content ORDER BY field_id
+    </select>
+
+</mapper>

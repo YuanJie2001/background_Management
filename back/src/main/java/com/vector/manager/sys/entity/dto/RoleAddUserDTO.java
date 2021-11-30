@@ -1,0 +1,13 @@
+package com.vector.manager.sys.entity.dto;
+
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class RoleAddUserDTO {
+
+    private Long id;
+    private List<Long> checkedKeys;
+
+}

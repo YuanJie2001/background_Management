@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vector.manager.sys.dao.DepartmentDao">
+
+    <select id="getDepartmentTree" resultType="com.vector.manager.sys.entity.vo.DepartmentTree">
+        SELECT
+            t1.id,
+            t1.parent_id AS pid,
+            t1.parent_ids AS pids,
+            t1.sort,
+            t1.dept_name AS deptName,
+            COUNT(t2.dept_id) userCount
+        FROM sys_department t1 LEFT JOIN sys_user t2 ON t1.id = t2.dept_id AND t2.`status` = 1
+        GROUP BY t1.id ORDER BY t1.sort DESC
+    </select>
+
+    <select id="handleLoadDepartmentUsers" resultType="com.vector.manager.sys.entity.vo.DepartmentUserDTO">
+        SELECT
+            t1.id AS userId,
+            t1.username,
+            CASE WHEN t2.user_id IS NULL THEN FALSE ELSE TRUE END AS checked
+        FROM sys_user t1 LEFT JOIN sys_department_user_rel t2 ON t1.id = t2.user_id AND t2.department_id = #{depId}
+        ORDER BY t1.id DESC
+    </select>
+
+</mapper>
